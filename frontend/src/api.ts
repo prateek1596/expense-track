@@ -65,6 +65,30 @@ export const api = {
     request(`/reports/monthly?month=${month}&year=${year}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
+
+  monthlyReportPdf: async (token: string, month: number, year: number) => {
+    const response = await fetch(`${API_BASE}/reports/monthly/pdf?month=${month}&year=${year}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to export PDF');
+    }
+    return response.blob();
+  },
+
+  listBudgets: (token: string) =>
+    request('/budgets', { headers: { Authorization: `Bearer ${token}` } }),
+
+  upsertBudget: (
+    token: string,
+    payload: { category: string; monthly_limit: number; month: number; year: number },
+  ) =>
+    request('/budgets', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload),
+    }),
 };
 
 export { API_BASE };
