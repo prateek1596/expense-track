@@ -92,7 +92,7 @@ function App() {
   useEffect(() => {
     if (!token || !userId) return;
 
-    const socket = new WebSocket(wsUrl.replace('/ws/0', `/ws/${userId}`));
+    const socket = new WebSocket(`${wsUrl.replace('/ws/0', `/ws/${userId}`)}?token=${encodeURIComponent(token)}`);
     socket.onmessage = async () => {
       await refreshAll(token);
     };
