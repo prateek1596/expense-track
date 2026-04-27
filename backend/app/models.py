@@ -17,6 +17,7 @@ class User(Base):
 
     accounts: Mapped[list["BankAccount"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     transactions: Mapped[list["Transaction"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    budgets: Mapped[list["Budget"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class BankAccount(Base):
@@ -49,3 +50,17 @@ class Transaction(Base):
 
     user: Mapped[User] = relationship(back_populates="transactions")
     account: Mapped[BankAccount] = relationship(back_populates="transactions")
+
+
+class Budget(Base):
+    __tablename__ = "budgets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    category: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    monthly_limit: Mapped[float] = mapped_column(Float, nullable=False)
+    month: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    year: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user: Mapped[User] = relationship(back_populates="budgets")
