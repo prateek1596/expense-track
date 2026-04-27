@@ -6,9 +6,11 @@ Spend is a full-stack expense tracking app focused on Indian bank integrations v
 
 - FastAPI backend with:
   - JWT auth
-  - Bank account linking endpoints (Setu AA sandbox ready)
+  - Bank account linking endpoints (Setu AA sandbox API integration)
   - Transaction ingestion + auto-categorization
   - Monthly report API
+  - Monthly PDF report export
+  - Category budget limits + budget alerts
   - Webhook endpoint for near real-time updates
   - WebSocket stream for live dashboard updates
 - React + Vite frontend with:
@@ -42,6 +44,13 @@ Copy-Item backend/.env.example backend/.env
 docker compose up --build
 ```
 
+Migrations run automatically in backend container startup. For local manual migration:
+
+```bash
+cd backend
+alembic -c alembic.ini upgrade head
+```
+
 3. Open apps:
 - Frontend: http://localhost:5173
 - Backend docs: http://localhost:8000/docs
@@ -60,6 +69,10 @@ docker compose up --build
   - `POST /transactions`
 - Reports:
   - `GET /reports/monthly?month=MM&year=YYYY`
+  - `GET /reports/monthly/pdf?month=MM&year=YYYY`
+- Budgets:
+  - `GET /budgets`
+  - `POST /budgets`
 - Realtime:
   - `POST /webhooks/setu`
   - `WS /ws/{user_id}`
@@ -73,6 +86,6 @@ For production, you need FIU compliance and approved AA onboarding.
 ## Suggested next steps
 
 1. Plug actual Setu sandbox credentials in `backend/.env`.
-2. Implement webhook signature validation from Setu docs.
-3. Add Alembic migrations and robust test coverage.
-4. Build richer categorization rules or an ML model.
+2. Add robust tests for Setu client and webhook signature validation.
+3. Build richer categorization rules or an ML model.
+4. Add push/email channels for budget alerts.
