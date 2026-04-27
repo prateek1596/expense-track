@@ -1,0 +1,207 @@
+import { useEffect, useMemo, useState } from 'react';
+import { api, API_BASE } from './api';
+import type { BankAccount, MonthlyReport, Transaction } from './types';
+
+function App() {
+  const now = new Date();
+  const [email, setEmail] = useState('prateek@example.com');
+  const [fullName, setFullName] = useState('Prateek');
+  const [password, setPassword] = useState('password123');
+  const [token, setToken] = useState<string>('');
+  const [accounts, setAccounts] = useState<BankAccount[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [report, setReport] = useState<MonthlyReport | null>(null);
+  const [bankName, setBankName] = useState('HDFC');
+  const [masked, setMasked] = useState('XXXX4321');
+  const [selectedAccount, setSelectedAccount] = useState<number | null>(null);
+  const [amount, setAmount] = useState<number>(250);
+  const [merchant, setMerchant] = useState('Swiggy');
+  const [description, setDescription] = useState('Dinner order');
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [year, setYear] = useState(now.getFullYear());
+  const [error, setError] = useState('');
+
+  const wsUrl = useMemo(() => {
+    const base = API_BASE.replace('http://', 'ws://').replace('https://', 'wss://');
+    return `${base}/ws/0`;
+  }, []);
+
+  async function refreshAll(activeToken: string) {
+    const [accountRes, txRes, reportRes] = await Promise.all([
+      api.listAccounts(activeToken) as Promise<BankAccount[]>,
+      api.listTransactions(activeToken) as Promise<Transaction[]>,
+      api.monthlyReport(activeToken, month, year) as Promise<MonthlyReport>,
+    ]);
+    setAccounts(accountRes);
+    setTransactions(txRes);
+    setReport(reportRes);
+    if (!selectedAccount && accountRes.length) {
+      setSelectedAccount(accountRes[0].id);
+    }
+  }
+
+  async function handleRegister() {
+    setError('');
+    try {
+      await api.register({ email, full_name: fullName, password });
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  async function handleLogin() {
+    setError('');
+    try {
+      const res = await api.login({ email, password });
+      setToken(res.access_token);
+      await refreshAll(res.access_token);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  async function handleLinkAccount() {
+    if (!token) return;
+    await api.linkAccount(token, { bank_name: bankName, masked_account: masked });
+    await refreshAll(token);
+  }
+
+  async function handleAddTransaction() {
+    if (!token || !selectedAccount) return;
+    await api.addTransaction(token, {
+      account_id: selectedAccount,
+      amount,
+      tx_type: 'debit',
+      merchant,
+      description,
+      timestamp: new Date().toISOString(),
+      raw_data: { source: 'manual' },
+    });
+    await refreshAll(token);
+  }
+
+  async function handleRefreshReport() {
+    if (!token) return;
+    const reportRes = (await api.monthlyReport(token, month, year)) as MonthlyReport;
+    setReport(reportRes);
+  }
+
+  useEffect(() => {
+    if (!token) return;
+
+    const userId = 1;
+    const socket = new WebSocket(wsUrl.replace('/ws/0', `/ws/${userId}`));
+    socket.onmessage = async () => {
+      await refreshAll(token);
+    };
+
+    return () => socket.close();
+  }, [token, wsUrl]);
+
+  const debitTotal = transactions
+    .filter((tx) => tx.tx_type === 'debit')
+    .reduce((sum, tx) => sum + Number(tx.amount), 0);
+
+  return (
+    <div className="page">
+      <header className="hero">
+        <h1>Spend</h1>
+        <p>Real-time monthly expense tracking for Indian bank users.</p>
+      </header>
+
+      <section className="card auth-card">
+        <h2>Auth</h2>
+        <div className="grid two">
+          <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full name" />
+          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
+          <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="Password" />
+        </div>
+        <div className="row">
+          <button onClick={handleRegister}>Register</button>
+          <button onClick={handleLogin}>Login</button>
+          {token && <span className="ok">Authenticated</span>}
+        </div>
+        {error && <p className="error">{error}</p>}
+      </section>
+
+      <section className="grid three">
+        <article className="card">
+          <h3>Quick Stats</h3>
+          <p>Accounts linked: {accounts.length}</p>
+          <p>Transactions: {transactions.length}</p>
+          <p>This month spend: INR {debitTotal.toFixed(2)}</p>
+        </article>
+
+        <article className="card">
+          <h3>Link Bank Account</h3>
+          <input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="Bank name" />
+          <input value={masked} onChange={(e) => setMasked(e.target.value)} placeholder="Masked account" />
+          <button disabled={!token} onClick={handleLinkAccount}>Link Account</button>
+        </article>
+
+        <article className="card">
+          <h3>Add Transaction</h3>
+          <select value={selectedAccount ?? ''} onChange={(e) => setSelectedAccount(Number(e.target.value))}>
+            <option value="">Select account</option>
+            {accounts.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.bank_name} {account.masked_account}
+              </option>
+            ))}
+          </select>
+          <input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
+          <input value={merchant} onChange={(e) => setMerchant(e.target.value)} placeholder="Merchant" />
+          <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" />
+          <button disabled={!token || !selectedAccount} onClick={handleAddTransaction}>Add Debit</button>
+        </article>
+      </section>
+
+      <section className="grid two">
+        <article className="card">
+          <h3>Live Transaction Feed</h3>
+          <div className="feed">
+            {transactions.map((tx) => (
+              <div className="tx" key={tx.id}>
+                <div>
+                  <strong>{tx.merchant}</strong>
+                  <p>{tx.description}</p>
+                </div>
+                <div>
+                  <span className="tag">{tx.category}</span>
+                  <p>INR {Number(tx.amount).toFixed(2)}</p>
+                </div>
+              </div>
+            ))}
+            {!transactions.length && <p>No transactions yet.</p>}
+          </div>
+        </article>
+
+        <article className="card">
+          <h3>Monthly Report</h3>
+          <div className="row">
+            <input type="number" min={1} max={12} value={month} onChange={(e) => setMonth(Number(e.target.value))} />
+            <input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} />
+            <button disabled={!token} onClick={handleRefreshReport}>Refresh</button>
+          </div>
+          <p>Total spend: INR {report?.total_spend.toFixed(2) ?? '0.00'}</p>
+          <div className="bars">
+            {report?.by_category.map((item) => (
+              <div key={item.category} className="bar-row">
+                <span>{item.category}</span>
+                <div className="bar-track">
+                  <div
+                    className="bar-fill"
+                    style={{ width: `${Math.min(100, report.total_spend ? (item.total / report.total_spend) * 100 : 0)}%` }}
+                  />
+                </div>
+                <span>INR {item.total.toFixed(0)}</span>
+              </div>
+            ))}
+          </div>
+        </article>
+      </section>
+    </div>
+  );
+}
+
+export default App;
