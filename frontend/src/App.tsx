@@ -141,7 +141,11 @@ function App() {
 
         <article className="card">
           <h3>Add Transaction</h3>
-          <select value={selectedAccount ?? ''} onChange={(e) => setSelectedAccount(Number(e.target.value))}>
+          <select
+            title="Select account"
+            value={selectedAccount ?? ''}
+            onChange={(e) => setSelectedAccount(Number(e.target.value))}
+          >
             <option value="">Select account</option>
             {accounts.map((account) => (
               <option key={account.id} value={account.id}>
@@ -149,7 +153,13 @@ function App() {
               </option>
             ))}
           </select>
-          <input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
+          <input
+            type="number"
+            title="Amount"
+            placeholder="Amount"
+            value={amount}
+            onChange={(e) => setAmount(Number(e.target.value))}
+          />
           <input value={merchant} onChange={(e) => setMerchant(e.target.value)} placeholder="Merchant" />
           <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" />
           <button disabled={!token || !selectedAccount} onClick={handleAddTransaction}>Add Debit</button>
@@ -179,8 +189,22 @@ function App() {
         <article className="card">
           <h3>Monthly Report</h3>
           <div className="row">
-            <input type="number" min={1} max={12} value={month} onChange={(e) => setMonth(Number(e.target.value))} />
-            <input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} />
+            <input
+              type="number"
+              title="Month"
+              placeholder="Month"
+              min={1}
+              max={12}
+              value={month}
+              onChange={(e) => setMonth(Number(e.target.value))}
+            />
+            <input
+              type="number"
+              title="Year"
+              placeholder="Year"
+              value={year}
+              onChange={(e) => setYear(Number(e.target.value))}
+            />
             <button disabled={!token} onClick={handleRefreshReport}>Refresh</button>
           </div>
           <p>Total spend: INR {report?.total_spend.toFixed(2) ?? '0.00'}</p>
@@ -188,12 +212,11 @@ function App() {
             {report?.by_category.map((item) => (
               <div key={item.category} className="bar-row">
                 <span>{item.category}</span>
-                <div className="bar-track">
-                  <div
-                    className="bar-fill"
-                    style={{ width: `${Math.min(100, report.total_spend ? (item.total / report.total_spend) * 100 : 0)}%` }}
-                  />
-                </div>
+                <progress
+                  className="bar-progress"
+                  max={100}
+                  value={Math.min(100, report.total_spend ? (item.total / report.total_spend) * 100 : 0)}
+                />
                 <span>INR {item.total.toFixed(0)}</span>
               </div>
             ))}
