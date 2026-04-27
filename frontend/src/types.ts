@@ -29,3 +29,21 @@ export type MonthlyReport = {
   total_spend: number;
   by_category: Array<{ category: string; total: number }>;
 };
+
+export type Budget = {
+  id: number;
+  category: string;
+  monthly_limit: number;
+  month: number;
+  year: number;
+};
+
+export type BudgetAlert = {
+  category: string;
+  month: number;
+  year: number;
+  limit: number;
+  spent: number;
+  over_by: number;
+  percent: number;
+};
