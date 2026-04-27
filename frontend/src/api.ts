@@ -27,6 +27,9 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
+  me: (token: string) =>
+    request('/auth/me', { headers: { Authorization: `Bearer ${token}` } }),
+
   listAccounts: (token: string) =>
     request('/accounts', { headers: { Authorization: `Bearer ${token}` } }),
 

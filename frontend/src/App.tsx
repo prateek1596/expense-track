@@ -20,6 +20,7 @@ function App() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [error, setError] = useState('');
+  const [userId, setUserId] = useState<number | null>(null);
 
   const wsUrl = useMemo(() => {
     const base = API_BASE.replace('http://', 'ws://').replace('https://', 'wss://');
@@ -54,6 +55,8 @@ function App() {
     try {
       const res = await api.login({ email, password });
       setToken(res.access_token);
+      const me = (await api.me(res.access_token)) as { id: number };
+      setUserId(me.id);
       await refreshAll(res.access_token);
     } catch (e) {
       setError((e as Error).message);
@@ -87,16 +90,15 @@ function App() {
   }
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !userId) return;
 
-    const userId = 1;
     const socket = new WebSocket(wsUrl.replace('/ws/0', `/ws/${userId}`));
     socket.onmessage = async () => {
       await refreshAll(token);
     };
 
     return () => socket.close();
-  }, [token, wsUrl]);
+  }, [token, wsUrl, userId]);
 
   const debitTotal = transactions
     .filter((tx) => tx.tx_type === 'debit')
