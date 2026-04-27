@@ -44,6 +44,11 @@ class BankAccountResponse(BaseModel):
         from_attributes = True
 
 
+class LinkBankResponse(BaseModel):
+    account: BankAccountResponse
+    consent_url: str
+
+
 class TransactionCreate(BaseModel):
     account_id: int
     amount: float
@@ -78,3 +83,21 @@ class MonthlyReportResponse(BaseModel):
     year: int
     total_spend: float
     by_category: list[MonthlyCategoryReportItem]
+
+
+class BudgetCreateRequest(BaseModel):
+    category: str
+    monthly_limit: float
+    month: int
+    year: int
+
+
+class BudgetResponse(BaseModel):
+    id: int
+    category: str
+    monthly_limit: float
+    month: int
+    year: int
+
+    class Config:
+        from_attributes = True
