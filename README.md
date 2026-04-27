@@ -24,10 +24,16 @@ Spend is a full-stack expense tracking app focused on Indian bank integrations v
 
 ## Quick start
 
-1. Copy backend environment file:
+1. Copy backend environment file (only if `backend/.env` is missing):
 
 ```bash
 cp backend/.env.example backend/.env
+```
+
+On Windows PowerShell:
+
+```powershell
+Copy-Item backend/.env.example backend/.env
 ```
 
 2. Start all services:
@@ -39,6 +45,24 @@ docker compose up --build
 3. Open apps:
 - Frontend: http://localhost:5173
 - Backend docs: http://localhost:8000/docs
+
+## Implemented API surface
+
+- Auth:
+  - `POST /auth/register`
+  - `POST /auth/login`
+  - `GET /auth/me`
+- Accounts:
+  - `GET /accounts`
+  - `POST /accounts/link`
+- Transactions:
+  - `GET /transactions`
+  - `POST /transactions`
+- Reports:
+  - `GET /reports/monthly?month=MM&year=YYYY`
+- Realtime:
+  - `POST /webhooks/setu`
+  - `WS /ws/{user_id}`
 
 ## Important note on Indian bank integration
 
