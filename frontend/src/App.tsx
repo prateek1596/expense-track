@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, API_BASE } from './api';
-import type { BankAccount, MonthlyReport, Transaction } from './types';
+import type { BankAccount, Budget, BudgetAlert, MonthlyReport, Transaction } from './types';
 
 function App() {
   const now = new Date();
@@ -10,6 +10,8 @@ function App() {
   const [token, setToken] = useState<string>('');
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [alerts, setAlerts] = useState<BudgetAlert[]>([]);
   const [report, setReport] = useState<MonthlyReport | null>(null);
   const [bankName, setBankName] = useState('HDFC');
   const [masked, setMasked] = useState('XXXX4321');
@@ -19,6 +21,8 @@ function App() {
   const [description, setDescription] = useState('Dinner order');
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
+  const [budgetCategory, setBudgetCategory] = useState('Food');
+  const [budgetLimit, setBudgetLimit] = useState<number>(5000);
   const [error, setError] = useState('');
   const [userId, setUserId] = useState<number | null>(null);
 
@@ -28,14 +32,16 @@ function App() {
   }, []);
 
   async function refreshAll(activeToken: string) {
-    const [accountRes, txRes, reportRes] = await Promise.all([
+    const [accountRes, txRes, reportRes, budgetRes] = await Promise.all([
       api.listAccounts(activeToken) as Promise<BankAccount[]>,
       api.listTransactions(activeToken) as Promise<Transaction[]>,
       api.monthlyReport(activeToken, month, year) as Promise<MonthlyReport>,
+      api.listBudgets(activeToken) as Promise<Budget[]>,
     ]);
     setAccounts(accountRes);
     setTransactions(txRes);
     setReport(reportRes);
+    setBudgets(budgetRes);
     if (!selectedAccount && accountRes.length) {
       setSelectedAccount(accountRes[0].id);
     }
@@ -89,11 +95,41 @@ function App() {
     setReport(reportRes);
   }
 
+  async function handleExportPdf() {
+    if (!token) return;
+    const blob = await api.monthlyReportPdf(token, month, year);
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `monthly-report-${year}-${String(month).padStart(2, '0')}.pdf`;
+    anchor.click();
+    window.URL.revokeObjectURL(url);
+  }
+
+  async function handleSaveBudget() {
+    if (!token) return;
+    await api.upsertBudget(token, {
+      category: budgetCategory,
+      monthly_limit: budgetLimit,
+      month,
+      year,
+    });
+    await refreshAll(token);
+  }
+
   useEffect(() => {
     if (!token || !userId) return;
 
     const socket = new WebSocket(`${wsUrl.replace('/ws/0', `/ws/${userId}`)}?token=${encodeURIComponent(token)}`);
-    socket.onmessage = async () => {
+    socket.onmessage = async (event) => {
+      try {
+        const payload = JSON.parse(event.data) as { type?: string; data?: BudgetAlert };
+        if (payload.type === 'budget.alert' && payload.data) {
+          setAlerts((prev) => [payload.data, ...prev].slice(0, 5));
+        }
+      } catch {
+        // Ignore non-JSON ping frames.
+      }
       await refreshAll(token);
     };
 
@@ -125,6 +161,19 @@ function App() {
         </div>
         {error && <p className="error">{error}</p>}
       </section>
+
+      {!!alerts.length && (
+        <section className="card alert-card">
+          <h3>Budget Alerts</h3>
+          <div className="alerts">
+            {alerts.map((alert, idx) => (
+              <p key={`${alert.category}-${alert.month}-${alert.year}-${idx}`}>
+                {alert.category}: spent INR {alert.spent.toFixed(2)} vs limit INR {alert.limit.toFixed(2)} ({alert.percent.toFixed(1)}%)
+              </p>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="grid three">
         <article className="card">
@@ -208,6 +257,7 @@ function App() {
               onChange={(e) => setYear(Number(e.target.value))}
             />
             <button disabled={!token} onClick={handleRefreshReport}>Refresh</button>
+            <button disabled={!token} onClick={handleExportPdf}>Export PDF</button>
           </div>
           <p>Total spend: INR {report?.total_spend.toFixed(2) ?? '0.00'}</p>
           <div className="bars">
@@ -224,6 +274,33 @@ function App() {
             ))}
           </div>
         </article>
+      </section>
+
+      <section className="card">
+        <h3>Budgets</h3>
+        <div className="grid three">
+          <input
+            title="Budget category"
+            placeholder="Category"
+            value={budgetCategory}
+            onChange={(e) => setBudgetCategory(e.target.value)}
+          />
+          <input
+            type="number"
+            title="Monthly limit"
+            placeholder="Monthly limit"
+            value={budgetLimit}
+            onChange={(e) => setBudgetLimit(Number(e.target.value))}
+          />
+          <button disabled={!token} onClick={handleSaveBudget}>Save Budget</button>
+        </div>
+        <div className="budget-list">
+          {budgets
+            .filter((item) => item.month === month && item.year === year)
+            .map((item) => (
+              <p key={item.id}>{item.category}: INR {item.monthly_limit.toFixed(2)} for {item.month}/{item.year}</p>
+            ))}
+        </div>
       </section>
     </div>
   );
