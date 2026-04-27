@@ -5,6 +5,7 @@ from app.database import get_db
 from app.deps import get_current_user
 from app.models import BankAccount, Transaction, User
 from app.schemas import TransactionCreate, TransactionResponse
+from app.services.budget_alerts import evaluate_and_notify_budget
 from app.services.categorizer import categorize_transaction
 from app.ws_manager import manager
 
@@ -66,5 +67,7 @@ async def create_transaction(payload: TransactionCreate, current_user: User = De
             },
         },
     )
+
+    await evaluate_and_notify_budget(db, current_user.id, tx.category, tx.timestamp, manager.broadcast_to_user)
 
     return tx
