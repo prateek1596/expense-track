@@ -1,21 +1,27 @@
 import asyncio
 from datetime import datetime
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
 from app.models import User, BankAccount, Transaction
-from app.security import get_password_hash
+from app.security import create_access_token
 
 
 @pytest.fixture(scope="function")
 def test_db():
-    """Create in-memory SQLite database for testing."""
-    engine = create_engine("sqlite:///:memory:")
+    """Create in-memory SQLite database for testing with thread safety."""
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     Base.metadata.create_all(engine)
     SessionLocal = sessionmaker(bind=engine)
     session = SessionLocal()
@@ -40,19 +46,19 @@ def client(test_db):
 @pytest.fixture
 def auth_token(client, test_db):
     """Register a test user and return an auth token."""
-    # Create user in database
-    user = User(
-        email="testuser@example.com",
-        full_name="Test User",
-        hashed_password=get_password_hash("testpass123"),
-    )
-    test_db.add(user)
-    test_db.commit()
-    test_db.refresh(user)
+    # Create user in database with mocked password hashing
+    with patch("app.security.get_password_hash") as mock_hash:
+        mock_hash.return_value = "hashed_testpass123"
+        user = User(
+            email="testuser@example.com",
+            full_name="Test User",
+            hashed_password="hashed_testpass123",
+        )
+        test_db.add(user)
+        test_db.commit()
+        test_db.refresh(user)
 
     # Return token (manually created using the user ID)
-    from app.security import create_access_token
-
     token = create_access_token(str(user.id))
     return token, user
 
@@ -79,14 +85,16 @@ def test_register_new_user(client, test_db):
 
 
 def test_register_duplicate_email(client, test_db):
-    # Create first user
-    user = User(
-        email="duplicate@example.com",
-        full_name="First User",
-        hashed_password=get_password_hash("pass123"),
-    )
-    test_db.add(user)
-    test_db.commit()
+    # Create first user with mocked password hashing
+    with patch("app.security.get_password_hash") as mock_hash:
+        mock_hash.return_value = "hashed_pass123"
+        user = User(
+            email="duplicate@example.com",
+            full_name="First User",
+            hashed_password="hashed_pass123",
+        )
+        test_db.add(user)
+        test_db.commit()
 
     # Try to register with same email
     response = client.post(
@@ -103,20 +111,24 @@ def test_register_duplicate_email(client, test_db):
 
 
 def test_login_valid_credentials(client, test_db):
-    # Create user
-    user = User(
-        email="login@example.com",
-        full_name="Login User",
-        hashed_password=get_password_hash("correctpass"),
-    )
-    test_db.add(user)
-    test_db.commit()
+    # Create user with mocked password hashing
+    with patch("app.security.get_password_hash") as mock_hash:
+        mock_hash.return_value = "hashed_correctpass"
+        user = User(
+            email="login@example.com",
+            full_name="Login User",
+            hashed_password="hashed_correctpass",
+        )
+        test_db.add(user)
+        test_db.commit()
 
-    # Login with correct credentials
-    response = client.post(
-        "/auth/login",
-        json={"email": "login@example.com", "password": "correctpass"},
-    )
+    # Mock the verify_password function to return True for test
+    with patch("app.security.verify_password") as mock_verify:
+        mock_verify.return_value = True
+        response = client.post(
+            "/auth/login",
+            json={"email": "login@example.com", "password": "correctpass"},
+        )
 
     assert response.status_code == 200
     data = response.json()
@@ -125,20 +137,24 @@ def test_login_valid_credentials(client, test_db):
 
 
 def test_login_invalid_credentials(client, test_db):
-    # Create user
-    user = User(
-        email="wrongpass@example.com",
-        full_name="Wrong Pass User",
-        hashed_password=get_password_hash("correctpass"),
-    )
-    test_db.add(user)
-    test_db.commit()
+    # Create user with mocked password hashing
+    with patch("app.security.get_password_hash") as mock_hash:
+        mock_hash.return_value = "hashed_correctpass"
+        user = User(
+            email="wrongpass@example.com",
+            full_name="Wrong Pass User",
+            hashed_password="hashed_correctpass",
+        )
+        test_db.add(user)
+        test_db.commit()
 
-    # Try wrong password
-    response = client.post(
-        "/auth/login",
-        json={"email": "wrongpass@example.com", "password": "wrongpass"},
-    )
+    # Mock verify_password to return False
+    with patch("app.security.verify_password") as mock_verify:
+        mock_verify.return_value = False
+        response = client.post(
+            "/auth/login",
+            json={"email": "wrongpass@example.com", "password": "wrongpass"},
+        )
 
     assert response.status_code == 401
     assert "Invalid credentials" in response.json()["detail"]
