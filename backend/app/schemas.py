@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class RegisterRequest(BaseModel):
@@ -20,12 +20,11 @@ class TokenResponse(BaseModel):
 
 
 class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     email: EmailStr
     full_name: str
-
-    class Config:
-        from_attributes = True
 
 
 class LinkBankRequest(BaseModel):
@@ -34,14 +33,13 @@ class LinkBankRequest(BaseModel):
 
 
 class BankAccountResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     bank_name: str
     masked_account: str
     aa_consent_id: str
     linked_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class LinkBankResponse(BaseModel):
@@ -60,6 +58,8 @@ class TransactionCreate(BaseModel):
 
 
 class TransactionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     account_id: int
     amount: float
@@ -68,9 +68,6 @@ class TransactionResponse(BaseModel):
     category: str
     description: str
     timestamp: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class MonthlyCategoryReportItem(BaseModel):
@@ -93,11 +90,10 @@ class BudgetCreateRequest(BaseModel):
 
 
 class BudgetResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     category: str
     monthly_limit: float
     month: int
     year: int
-
-    class Config:
-        from_attributes = True
