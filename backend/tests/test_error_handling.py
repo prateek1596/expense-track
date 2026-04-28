@@ -215,13 +215,16 @@ def test_list_budgets_empty(client, auth_token):
 
 def test_list_budgets_with_data(client, auth_token, test_db):
     """Test listing budgets with data."""
+    from datetime import datetime
+    
     token, user = auth_token
 
     budget = Budget(
         user_id=user.id,
         category="Food",
-        limit=500.0,
-        current_spend=150.0,
+        monthly_limit=500.0,
+        month=4,
+        year=2026,
     )
     test_db.add(budget)
     test_db.commit()
@@ -235,4 +238,4 @@ def test_list_budgets_with_data(client, auth_token, test_db):
     data = response.json()
     assert len(data) == 1
     assert data[0]["category"] == "Food"
-    assert data[0]["limit"] == 500.0
+    assert data[0]["monthly_limit"] == 500.0
