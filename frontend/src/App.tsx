@@ -125,7 +125,8 @@ function App() {
       try {
         const payload = JSON.parse(event.data) as { type?: string; data?: BudgetAlert };
         if (payload.type === 'budget.alert' && payload.data) {
-          setAlerts((prev) => [payload.data, ...prev].slice(0, 5));
+          const alert = payload.data;
+          setAlerts((prev) => [alert, ...prev].slice(0, 5));
         }
       } catch {
         // Ignore non-JSON ping frames.
