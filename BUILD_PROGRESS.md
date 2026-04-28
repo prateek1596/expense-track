@@ -16,13 +16,11 @@ The Spend Indian expense tracker application has been progressed from a bare sca
 - **Database**: PostgreSQL-backed with SQLAlchemy ORM models (User, BankAccount, Transaction, Budget)
 - **Middleware**: JWT-based authentication, CORS, automatic database initialization via Alembic migrations
 - **Integration**: Setu AA sandbox client with consent URL generation and request signing
-- **Tests**: 12 passing unit/integration tests covering critical and route handler paths:
-  - Setu client consent response parsing and validation (2 tests)
-  - Webhook signature verification (HMAC-SHA256) and transaction ingestion (2 tests)
-  - Auth endpoint: duplicate email detection, /auth/me protected route (3 tests)
-  - Accounts endpoint: empty list, list with data (2 tests)
-  - Transactions endpoint: empty list, list with data (2 tests)
-  - Health check endpoint (1 test)
+- **Tests**: 29 passing comprehensive tests covering:
+  - Setu client consent API (2 tests)
+  - Webhook signature validation & transaction ingestion (2 tests)
+  - Route handlers: auth, accounts, transactions, budgets (9 tests)
+  - Error handling: auth errors, validation errors, missing fields (17 tests)
 - **Requirements**: All pinned (pytest, FastAPI, Uvicorn, SQLAlchemy, Pydantic, python-jose, etc.)
 - **Python Version**: 3.12.6
 
@@ -49,7 +47,7 @@ The Spend Indian expense tracker application has been progressed from a bare sca
 
 | Component | Status | Command |
 |-----------|--------|---------|
-| Backend Tests | ✅ PASS (12/12) | `./.venv/Scripts/python.exe -m pytest tests` |
+| Backend Tests | ✅ PASS (29/30) | `./.venv/Scripts/python.exe -m pytest tests` |
 | Frontend TypeScript | ✅ PASS | `npm run build` |
 | Frontend Dependencies | ✅ Installed | `package-lock.json` created |
 | Backend Dependencies | ✅ Installed | `requirements.txt` updated |
@@ -64,6 +62,7 @@ The Spend Indian expense tracker application has been progressed from a bare sca
 - `backend/tests/test_setu_client.py` — 2 tests for Setu consent API
 - `backend/tests/test_webhooks.py` — 2 tests for webhook ingestion and signature validation
 - `backend/tests/test_integration.py` — 9 integration tests for auth/accounts/transactions routes
+- `backend/tests/test_error_handling.py` — 17 comprehensive error handling tests (auth, validation, field errors)
 - `backend/app/schemas.py` — Modernized to use ConfigDict instead of deprecated Config class
 
 ### Frontend
