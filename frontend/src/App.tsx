@@ -130,6 +130,33 @@ function App() {
     return ['All', ...Array.from(categories).sort()];
   }, [transactions]);
 
+  const debitTransactions = useMemo(
+    () => transactions.filter((tx) => tx.tx_type === 'debit'),
+    [transactions],
+  );
+
+  const topMerchant = useMemo(() => {
+    const merchantTotals = new Map<string, number>();
+    for (const tx of debitTransactions) {
+      merchantTotals.set(tx.merchant, (merchantTotals.get(tx.merchant) ?? 0) + Number(tx.amount));
+    }
+
+    const [merchantName, merchantTotal] = Array.from(merchantTotals.entries()).sort((left, right) => right[1] - left[1])[0] ?? [];
+    return merchantName ? { name: merchantName, total: merchantTotal } : null;
+  }, [debitTransactions]);
+
+  const largestDebit = useMemo(
+    () => debitTransactions.reduce<Transaction | null>((largest, tx) => {
+      if (!largest || Number(tx.amount) > Number(largest.amount)) {
+        return tx;
+      }
+      return largest;
+    }, null),
+    [debitTransactions],
+  );
+
+  const averageDebit = debitTransactions.length ? debitTotal / debitTransactions.length : 0;
+
   useEffect(() => {
     if (!token || !userId) return;
 
@@ -155,9 +182,7 @@ function App() {
     refreshAll(token).catch((err) => setError((err as Error).message));
   }, [token, month, year, txCategory, txSearch, selectedAccount]);
 
-  const debitTotal = transactions
-    .filter((tx) => tx.tx_type === 'debit')
-    .reduce((sum, tx) => sum + Number(tx.amount), 0);
+  const debitTotal = debitTransactions.reduce((sum, tx) => sum + Number(tx.amount), 0);
 
   return (
     <div className="page">
@@ -200,6 +225,24 @@ function App() {
           <p>Accounts linked: {accounts.length}</p>
           <p>Transactions: {transactions.length}</p>
           <p>This month spend: INR {debitTotal.toFixed(2)}</p>
+          <div className="insight-stack">
+            <div className="insight">
+              <span>Average debit</span>
+              <strong>INR {averageDebit.toFixed(2)}</strong>
+            </div>
+            <div className="insight">
+              <span>Top merchant</span>
+              <strong>{topMerchant ? `${topMerchant.name} · INR ${topMerchant.total.toFixed(2)}` : 'No spend yet'}</strong>
+            </div>
+            <div className="insight">
+              <span>Largest debit</span>
+              <strong>
+                {largestDebit
+                  ? `${largestDebit.merchant} · INR ${Number(largestDebit.amount).toFixed(2)}`
+                  : 'No debit transactions'}
+              </strong>
+            </div>
+          </div>
         </article>
 
         <article className="card">
@@ -309,6 +352,7 @@ function App() {
               </div>
             ))}
           </div>
+          {!report?.by_category.length && <p className="muted">No category totals for the selected month.</p>}
         </article>
       </section>
 
