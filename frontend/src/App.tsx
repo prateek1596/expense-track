@@ -152,7 +152,7 @@ function App() {
 
   useEffect(() => {
     if (!token) return;
-    refreshAll(token).catch((err) => setError((e as Error).message));
+    refreshAll(token).catch((err) => setError((err as Error).message));
   }, [token, month, year, txCategory, txSearch, selectedAccount]);
 
   const debitTotal = transactions
@@ -245,7 +245,7 @@ function App() {
               onChange={(e) => setTxSearch(e.target.value)}
               placeholder="Search merchant or description"
             />
-            <select value={txCategory} onChange={(e) => setTxCategory(e.target.value)}>
+            <select title="Transaction category filter" value={txCategory} onChange={(e) => setTxCategory(e.target.value)}>
               {transactionCategories.map((category) => (
                 <option key={category} value={category}>
                   {category}
