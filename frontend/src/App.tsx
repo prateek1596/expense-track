@@ -155,6 +155,7 @@ function App() {
     [debitTransactions],
   );
 
+  const debitTotal = debitTransactions.reduce((sum, tx) => sum + Number(tx.amount), 0);
   const averageDebit = debitTransactions.length ? debitTotal / debitTransactions.length : 0;
 
   useEffect(() => {
@@ -181,8 +182,6 @@ function App() {
     if (!token) return;
     refreshAll(token).catch((err) => setError((err as Error).message));
   }, [token, month, year, txCategory, txSearch, selectedAccount]);
-
-  const debitTotal = debitTransactions.reduce((sum, tx) => sum + Number(tx.amount), 0);
 
   return (
     <div className="page">
