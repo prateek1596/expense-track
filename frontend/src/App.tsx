@@ -158,6 +158,28 @@ function App() {
   const debitTotal = debitTransactions.reduce((sum, tx) => sum + Number(tx.amount), 0);
   const averageDebit = debitTransactions.length ? debitTotal / debitTransactions.length : 0;
 
+  const categorySpendMap = useMemo(() => {
+    return new Map((report?.by_category ?? []).map((item) => [item.category, item.total]));
+  }, [report]);
+
+  const budgetHealth = useMemo(() => {
+    return budgets
+      .filter((item) => item.month === month && item.year === year)
+      .map((item) => {
+        const spent = categorySpendMap.get(item.category) ?? 0;
+        const utilization = item.monthly_limit > 0 ? (spent / item.monthly_limit) * 100 : 0;
+        return {
+          ...item,
+          spent,
+          remaining: item.monthly_limit - spent,
+          utilization,
+          isOverLimit: spent > item.monthly_limit,
+        };
+      });
+  }, [budgets, categorySpendMap, month, year]);
+
+  const overspentBudgets = budgetHealth.filter((item) => item.isOverLimit);
+
   useEffect(() => {
     if (!token || !userId) return;
 
@@ -373,12 +395,31 @@ function App() {
           />
           <button disabled={!token} onClick={handleSaveBudget}>Save Budget</button>
         </div>
+        <div className="budget-summary">
+          <p>{budgetHealth.length ? `${budgetHealth.length} budgets tracked this month.` : 'No budgets set for this month.'}</p>
+          {overspentBudgets.length > 0 && <p className="error">{overspentBudgets.length} budget(s) are over limit.</p>}
+        </div>
         <div className="budget-list">
-          {budgets
-            .filter((item) => item.month === month && item.year === year)
-            .map((item) => (
-              <p key={item.id}>{item.category}: INR {item.monthly_limit.toFixed(2)} for {item.month}/{item.year}</p>
-            ))}
+          {budgetHealth.map((item) => (
+            <div key={item.id} className={`budget-item ${item.isOverLimit ? 'budget-item-over' : ''}`}>
+              <div className="budget-item-row">
+                <strong>{item.category}</strong>
+                <span>
+                  INR {item.spent.toFixed(2)} / INR {item.monthly_limit.toFixed(2)}
+                </span>
+              </div>
+              <progress
+                className="bar-progress budget-progress"
+                max={100}
+                value={Math.min(100, Math.max(0, item.utilization))}
+              />
+              <div className="budget-item-row budget-meta">
+                <span>{item.utilization.toFixed(1)}% used</span>
+                <span>{item.isOverLimit ? `Over by INR ${Math.abs(item.remaining).toFixed(2)}` : `Left INR ${item.remaining.toFixed(2)}`}</span>
+              </div>
+            </div>
+          ))}
+          {!budgetHealth.length && <p className="muted">Set a monthly limit to see category progress here.</p>}
         </div>
       </section>
     </div>
