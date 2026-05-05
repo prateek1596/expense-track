@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -14,14 +17,33 @@ router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 
 @router.get("", response_model=list[TransactionResponse])
-def list_transactions(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return (
-        db.query(Transaction)
-        .filter(Transaction.user_id == current_user.id)
-        .order_by(Transaction.timestamp.desc())
-        .limit(300)
-        .all()
-    )
+def list_transactions(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    month: int | None = Query(default=None, ge=1, le=12),
+    year: int | None = Query(default=None, ge=1),
+    category: str | None = Query(default=None),
+    search: str | None = Query(default=None),
+    account_id: int | None = Query(default=None, ge=1),
+):
+    query = db.query(Transaction).filter(Transaction.user_id == current_user.id)
+
+    if account_id is not None:
+        query = query.filter(Transaction.account_id == account_id)
+
+    if category:
+        query = query.filter(Transaction.category == category)
+
+    if search:
+        pattern = f"%{search.strip()}%"
+        query = query.filter(or_(Transaction.merchant.ilike(pattern), Transaction.description.ilike(pattern)))
+
+    if month is not None and year is not None:
+        start = datetime(year, month, 1)
+        end = datetime(year + (month // 12), (month % 12) + 1, 1)
+        query = query.filter(Transaction.timestamp >= start, Transaction.timestamp < end)
+
+    return query.order_by(Transaction.timestamp.desc()).limit(300).all()
 
 
 @router.post("", response_model=TransactionResponse, status_code=status.HTTP_201_CREATED)

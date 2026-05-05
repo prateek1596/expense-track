@@ -21,6 +21,8 @@ function App() {
   const [description, setDescription] = useState('Dinner order');
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
+  const [txSearch, setTxSearch] = useState('');
+  const [txCategory, setTxCategory] = useState('All');
   const [budgetCategory, setBudgetCategory] = useState('Food');
   const [budgetLimit, setBudgetLimit] = useState<number>(5000);
   const [error, setError] = useState('');
@@ -34,7 +36,13 @@ function App() {
   async function refreshAll(activeToken: string) {
     const [accountRes, txRes, reportRes, budgetRes] = await Promise.all([
       api.listAccounts(activeToken) as Promise<BankAccount[]>,
-      api.listTransactions(activeToken) as Promise<Transaction[]>,
+      api.listTransactions(activeToken, {
+        month,
+        year,
+        category: txCategory === 'All' ? undefined : txCategory,
+        search: txSearch || undefined,
+        account_id: selectedAccount ?? undefined,
+      }) as Promise<Transaction[]>,
       api.monthlyReport(activeToken, month, year) as Promise<MonthlyReport>,
       api.listBudgets(activeToken) as Promise<Budget[]>,
     ]);
@@ -117,6 +125,11 @@ function App() {
     await refreshAll(token);
   }
 
+  const transactionCategories = useMemo(() => {
+    const categories = new Set(transactions.map((tx) => tx.category));
+    return ['All', ...Array.from(categories).sort()];
+  }, [transactions]);
+
   useEffect(() => {
     if (!token || !userId) return;
 
@@ -136,6 +149,11 @@ function App() {
 
     return () => socket.close();
   }, [token, wsUrl, userId]);
+
+  useEffect(() => {
+    if (!token) return;
+    refreshAll(token).catch((err) => setError((e as Error).message));
+  }, [token, month, year, txCategory, txSearch, selectedAccount]);
 
   const debitTotal = transactions
     .filter((tx) => tx.tx_type === 'debit')
@@ -221,6 +239,23 @@ function App() {
       <section className="grid two">
         <article className="card">
           <h3>Live Transaction Feed</h3>
+          <div className="grid three filter-row">
+            <input
+              value={txSearch}
+              onChange={(e) => setTxSearch(e.target.value)}
+              placeholder="Search merchant or description"
+            />
+            <select value={txCategory} onChange={(e) => setTxCategory(e.target.value)}>
+              {transactionCategories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+            <button disabled={!token} onClick={() => refreshAll(token).catch((err) => setError((err as Error).message))}>
+              Refresh Feed
+            </button>
+          </div>
           <div className="feed">
             {transactions.map((tx) => (
               <div className="tx" key={tx.id}>
@@ -234,7 +269,7 @@ function App() {
                 </div>
               </div>
             ))}
-            {!transactions.length && <p>No transactions yet.</p>}
+            {!transactions.length && <p>No transactions match the current filters.</p>}
           </div>
         </article>
 

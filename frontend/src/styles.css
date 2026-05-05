@@ -63,6 +63,10 @@ body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.filter-row {
+  margin-bottom: 12px;
+}
+
 .row {
   display: flex;
   gap: 10px;

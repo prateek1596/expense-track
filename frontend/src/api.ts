@@ -40,8 +40,22 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  listTransactions: (token: string) =>
-    request('/transactions', { headers: { Authorization: `Bearer ${token}` } }),
+  listTransactions: (
+    token: string,
+    filters?: { month?: number; year?: number; category?: string; search?: string; account_id?: number },
+  ) => {
+    const params = new URLSearchParams();
+    if (filters?.month !== undefined) params.set('month', String(filters.month));
+    if (filters?.year !== undefined) params.set('year', String(filters.year));
+    if (filters?.category) params.set('category', filters.category);
+    if (filters?.search) params.set('search', filters.search);
+    if (filters?.account_id !== undefined) params.set('account_id', String(filters.account_id));
+
+    const query = params.toString();
+    return request(`/transactions${query ? `?${query}` : ''}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
 
   addTransaction: (
     token: string,

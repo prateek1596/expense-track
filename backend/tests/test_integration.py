@@ -220,6 +220,54 @@ def test_list_transactions_with_data(client, auth_token, test_db):
     assert data[0]["merchant"] in ["Swiggy", "Amazon"]
 
 
+def test_list_transactions_with_filters(client, auth_token, test_db):
+    token, user = auth_token
+
+    account = BankAccount(
+        user_id=user.id,
+        bank_name="HDFC",
+        masked_account="XXXX1234",
+        aa_consent_id="consent-1",
+    )
+    test_db.add(account)
+    test_db.commit()
+
+    matching_tx = Transaction(
+        user_id=user.id,
+        account_id=account.id,
+        amount=125.0,
+        tx_type="debit",
+        merchant="Swiggy",
+        category="Food",
+        description="Dinner delivery",
+        timestamp=datetime(2026, 5, 3, 18, 30),
+        raw_data={},
+    )
+    non_matching_tx = Transaction(
+        user_id=user.id,
+        account_id=account.id,
+        amount=80.0,
+        tx_type="debit",
+        merchant="Amazon",
+        category="Shopping",
+        description="Notebook",
+        timestamp=datetime(2026, 4, 3, 18, 30),
+        raw_data={},
+    )
+    test_db.add_all([matching_tx, non_matching_tx])
+    test_db.commit()
+
+    response = client.get(
+        "/transactions?month=5&year=2026&category=Food&search=swiggy",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["merchant"] == "Swiggy"
+
+
 def test_health_check(client):
     response = client.get("/health")
 
