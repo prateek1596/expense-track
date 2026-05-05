@@ -13,6 +13,7 @@ function App() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [alerts, setAlerts] = useState<BudgetAlert[]>([]);
   const [report, setReport] = useState<MonthlyReport | null>(null);
+  const [previousReport, setPreviousReport] = useState<MonthlyReport | null>(null);
   const [bankName, setBankName] = useState('HDFC');
   const [masked, setMasked] = useState('XXXX4321');
   const [selectedAccount, setSelectedAccount] = useState<number | null>(null);
@@ -34,7 +35,10 @@ function App() {
   }, []);
 
   async function refreshAll(activeToken: string) {
-    const [accountRes, txRes, reportRes, budgetRes] = await Promise.all([
+    const previousMonth = month === 1 ? 12 : month - 1;
+    const previousYear = month === 1 ? year - 1 : year;
+
+    const [accountRes, txRes, reportRes, previousReportRes, budgetRes] = await Promise.all([
       api.listAccounts(activeToken) as Promise<BankAccount[]>,
       api.listTransactions(activeToken, {
         month,
@@ -44,11 +48,13 @@ function App() {
         account_id: selectedAccount ?? undefined,
       }) as Promise<Transaction[]>,
       api.monthlyReport(activeToken, month, year) as Promise<MonthlyReport>,
+      api.monthlyReport(activeToken, previousMonth, previousYear) as Promise<MonthlyReport>,
       api.listBudgets(activeToken) as Promise<Budget[]>,
     ]);
     setAccounts(accountRes);
     setTransactions(txRes);
     setReport(reportRes);
+    setPreviousReport(previousReportRes);
     setBudgets(budgetRes);
     if (!selectedAccount && accountRes.length) {
       setSelectedAccount(accountRes[0].id);
@@ -179,6 +185,21 @@ function App() {
   }, [budgets, categorySpendMap, month, year]);
 
   const overspentBudgets = budgetHealth.filter((item) => item.isOverLimit);
+
+  const spendDelta = useMemo(() => {
+    const current = report?.total_spend ?? 0;
+    const previous = previousReport?.total_spend ?? 0;
+    const difference = current - previous;
+    const percentChange = previous > 0 ? (difference / previous) * 100 : null;
+
+    return {
+      current,
+      previous,
+      difference,
+      percentChange,
+      direction: difference > 0 ? 'up' : difference < 0 ? 'down' : 'flat',
+    };
+  }, [previousReport, report]);
 
   useEffect(() => {
     if (!token || !userId) return;
@@ -358,6 +379,23 @@ function App() {
             />
             <button disabled={!token} onClick={handleRefreshReport}>Refresh</button>
             <button disabled={!token} onClick={handleExportPdf}>Export PDF</button>
+          </div>
+          <div className="comparison">
+            <div className="comparison-item">
+              <span>Current month</span>
+              <strong>INR {spendDelta.current.toFixed(2)}</strong>
+            </div>
+            <div className="comparison-item">
+              <span>Previous month</span>
+              <strong>INR {spendDelta.previous.toFixed(2)}</strong>
+            </div>
+            <div className="comparison-item">
+              <span>Change</span>
+              <strong className={spendDelta.direction === 'up' ? 'trend-up' : spendDelta.direction === 'down' ? 'trend-down' : ''}>
+                {spendDelta.difference >= 0 ? '+' : '-'}INR {Math.abs(spendDelta.difference).toFixed(2)}
+                {spendDelta.percentChange !== null ? ` (${Math.abs(spendDelta.percentChange).toFixed(1)}%)` : ''}
+              </strong>
+            </div>
           </div>
           <p>Total spend: INR {report?.total_spend.toFixed(2) ?? '0.00'}</p>
           <div className="bars">
