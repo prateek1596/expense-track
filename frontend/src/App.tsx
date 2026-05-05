@@ -192,6 +192,24 @@ function App() {
   const debitTotal = debitTransactions.reduce((sum, tx) => sum + Number(tx.amount), 0);
   const averageDebit = debitTransactions.length ? debitTotal / debitTransactions.length : 0;
 
+  const recurringMerchants = useMemo(() => {
+    const merchantStats = new Map<string, { count: number; total: number }>();
+
+    for (const tx of debitTransactions) {
+      const current = merchantStats.get(tx.merchant) ?? { count: 0, total: 0 };
+      merchantStats.set(tx.merchant, {
+        count: current.count + 1,
+        total: current.total + Number(tx.amount),
+      });
+    }
+
+    return Array.from(merchantStats.entries())
+      .map(([merchant, stats]) => ({ merchant, ...stats }))
+      .filter((item) => item.count > 1)
+      .sort((left, right) => right.total - left.total)
+      .slice(0, 5);
+  }, [debitTransactions]);
+
   const categorySpendMap = useMemo(() => {
     return new Map((report?.by_category ?? []).map((item) => [item.category, item.total]));
   }, [report]);
@@ -312,6 +330,24 @@ function App() {
                   : 'No debit transactions'}
               </strong>
             </div>
+          </div>
+          <div className="recurring-panel">
+            <h4>Recurring spend watch</h4>
+            {recurringMerchants.length ? (
+              <div className="recurring-list">
+                {recurringMerchants.map((item) => (
+                  <div key={item.merchant} className="recurring-item">
+                    <div>
+                      <strong>{item.merchant}</strong>
+                      <p>{item.count} debits this month</p>
+                    </div>
+                    <span>INR {item.total.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="muted">No merchant has repeated more than once in the current feed.</p>
+            )}
           </div>
         </article>
 
