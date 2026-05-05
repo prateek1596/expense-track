@@ -67,6 +67,16 @@ body {
   margin-bottom: 12px;
 }
 
+.feed-actions {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.feed-actions p {
+  margin: 0;
+}
+
 .insight-stack {
   display: grid;
   gap: 10px;

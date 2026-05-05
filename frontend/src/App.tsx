@@ -120,6 +120,34 @@ function App() {
     window.URL.revokeObjectURL(url);
   }
 
+  function handleExportCsv() {
+    if (!transactions.length) return;
+
+    const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const rows = [
+      ['id', 'timestamp', 'merchant', 'category', 'description', 'tx_type', 'amount', 'account_id'],
+      ...transactions.map((tx) => [
+        String(tx.id),
+        tx.timestamp,
+        tx.merchant,
+        tx.category,
+        tx.description,
+        tx.tx_type,
+        Number(tx.amount).toFixed(2),
+        String(tx.account_id),
+      ]),
+    ];
+
+    const csv = rows.map((row) => row.map(escapeCsv).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `transactions-${year}-${String(month).padStart(2, '0')}.csv`;
+    anchor.click();
+    window.URL.revokeObjectURL(url);
+  }
+
   async function handleSaveBudget() {
     if (!token) return;
     await api.upsertBudget(token, {
@@ -339,6 +367,12 @@ function App() {
             </select>
             <button disabled={!token} onClick={() => refreshAll(token).catch((err) => setError((err as Error).message))}>
               Refresh Feed
+            </button>
+          </div>
+          <div className="feed-actions">
+            <p className="muted">Export the currently filtered feed as CSV for spreadsheets or sharing.</p>
+            <button disabled={!token || !transactions.length} onClick={handleExportCsv}>
+              Export CSV
             </button>
           </div>
           <div className="feed">
