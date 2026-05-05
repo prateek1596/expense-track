@@ -80,6 +80,11 @@ export const api = {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
+  recurringSpending: (token: string, month: number, year: number, lookbackMonths = 6) =>
+    request(`/reports/recurring?month=${month}&year=${year}&lookback_months=${lookbackMonths}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
   monthlyReportPdf: async (token: string, month: number, year: number) => {
     const response = await fetch(`${API_BASE}/reports/monthly/pdf?month=${month}&year=${year}`, {
       headers: { Authorization: `Bearer ${token}` },

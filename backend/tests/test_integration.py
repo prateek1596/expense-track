@@ -268,6 +268,93 @@ def test_list_transactions_with_filters(client, auth_token, test_db):
     assert data[0]["merchant"] == "Swiggy"
 
 
+def test_recurring_spending_report(client, auth_token, test_db):
+    token, user = auth_token
+
+    account = BankAccount(
+        user_id=user.id,
+        bank_name="HDFC",
+        masked_account="XXXX1234",
+        aa_consent_id="consent-1",
+    )
+    test_db.add(account)
+    test_db.commit()
+
+    test_db.add_all([
+        Transaction(
+            user_id=user.id,
+            account_id=account.id,
+            amount=499.0,
+            tx_type="debit",
+            merchant="Netflix",
+            category="Entertainment",
+            description="Monthly subscription",
+            timestamp=datetime(2026, 1, 5, 10, 0),
+            raw_data={},
+        ),
+        Transaction(
+            user_id=user.id,
+            account_id=account.id,
+            amount=499.0,
+            tx_type="debit",
+            merchant="Netflix",
+            category="Entertainment",
+            description="Monthly subscription",
+            timestamp=datetime(2026, 2, 5, 10, 0),
+            raw_data={},
+        ),
+        Transaction(
+            user_id=user.id,
+            account_id=account.id,
+            amount=1000.0,
+            tx_type="debit",
+            merchant="Rent",
+            category="Utilities",
+            description="House rent",
+            timestamp=datetime(2026, 3, 1, 9, 0),
+            raw_data={},
+        ),
+        Transaction(
+            user_id=user.id,
+            account_id=account.id,
+            amount=1000.0,
+            tx_type="debit",
+            merchant="Rent",
+            category="Utilities",
+            description="House rent",
+            timestamp=datetime(2026, 4, 1, 9, 0),
+            raw_data={},
+        ),
+        Transaction(
+            user_id=user.id,
+            account_id=account.id,
+            amount=250.0,
+            tx_type="debit",
+            merchant="One-off",
+            category="Other",
+            description="Single purchase",
+            timestamp=datetime(2026, 4, 10, 9, 0),
+            raw_data={},
+        ),
+    ])
+    test_db.commit()
+
+    response = client.get(
+        "/reports/recurring?month=4&year=2026&lookback_months=4",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["lookback_months"] == 4
+    merchants = {item["merchant"]: item for item in data["recurring_merchants"]}
+    assert "Netflix" in merchants
+    assert "Rent" in merchants
+    assert "One-off" not in merchants
+    assert merchants["Netflix"]["count"] == 2
+    assert merchants["Rent"]["total"] == 2000.0
+
+
 def test_health_check(client):
     response = client.get("/health")
 

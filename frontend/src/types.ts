@@ -30,6 +30,23 @@ export type MonthlyReport = {
   by_category: Array<{ category: string; total: number }>;
 };
 
+export type RecurringMerchant = {
+  merchant: string;
+  category: string;
+  count: number;
+  total: number;
+  average: number;
+  first_seen: string;
+  last_seen: string;
+};
+
+export type RecurringSpending = {
+  month: number;
+  year: number;
+  lookback_months: number;
+  recurring_merchants: RecurringMerchant[];
+};
+
 export type Budget = {
   id: number;
   category: string;

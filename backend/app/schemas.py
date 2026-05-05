@@ -82,6 +82,23 @@ class MonthlyReportResponse(BaseModel):
     by_category: list[MonthlyCategoryReportItem]
 
 
+class RecurringMerchantItem(BaseModel):
+    merchant: str
+    category: str
+    count: int
+    total: float
+    average: float
+    first_seen: datetime
+    last_seen: datetime
+
+
+class RecurringSpendingResponse(BaseModel):
+    month: int
+    year: int
+    lookback_months: int
+    recurring_merchants: list[RecurringMerchantItem]
+
+
 class BudgetCreateRequest(BaseModel):
     category: str
     monthly_limit: float

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, API_BASE } from './api';
-import type { BankAccount, Budget, BudgetAlert, MonthlyReport, Transaction } from './types';
+import type { BankAccount, Budget, BudgetAlert, MonthlyReport, RecurringSpending, Transaction } from './types';
 
 function App() {
   const now = new Date();
@@ -14,6 +14,7 @@ function App() {
   const [alerts, setAlerts] = useState<BudgetAlert[]>([]);
   const [report, setReport] = useState<MonthlyReport | null>(null);
   const [previousReport, setPreviousReport] = useState<MonthlyReport | null>(null);
+  const [recurringSpending, setRecurringSpending] = useState<RecurringSpending | null>(null);
   const [bankName, setBankName] = useState('HDFC');
   const [masked, setMasked] = useState('XXXX4321');
   const [selectedAccount, setSelectedAccount] = useState<number | null>(null);
@@ -38,7 +39,7 @@ function App() {
     const previousMonth = month === 1 ? 12 : month - 1;
     const previousYear = month === 1 ? year - 1 : year;
 
-    const [accountRes, txRes, reportRes, previousReportRes, budgetRes] = await Promise.all([
+    const [accountRes, txRes, reportRes, previousReportRes, recurringRes, budgetRes] = await Promise.all([
       api.listAccounts(activeToken) as Promise<BankAccount[]>,
       api.listTransactions(activeToken, {
         month,
@@ -49,12 +50,14 @@ function App() {
       }) as Promise<Transaction[]>,
       api.monthlyReport(activeToken, month, year) as Promise<MonthlyReport>,
       api.monthlyReport(activeToken, previousMonth, previousYear) as Promise<MonthlyReport>,
+      api.recurringSpending(activeToken, month, year, 6) as Promise<RecurringSpending>,
       api.listBudgets(activeToken) as Promise<Budget[]>,
     ]);
     setAccounts(accountRes);
     setTransactions(txRes);
     setReport(reportRes);
     setPreviousReport(previousReportRes);
+    setRecurringSpending(recurringRes);
     setBudgets(budgetRes);
     if (!selectedAccount && accountRes.length) {
       setSelectedAccount(accountRes[0].id);
@@ -192,24 +195,6 @@ function App() {
   const debitTotal = debitTransactions.reduce((sum, tx) => sum + Number(tx.amount), 0);
   const averageDebit = debitTransactions.length ? debitTotal / debitTransactions.length : 0;
 
-  const recurringMerchants = useMemo(() => {
-    const merchantStats = new Map<string, { count: number; total: number }>();
-
-    for (const tx of debitTransactions) {
-      const current = merchantStats.get(tx.merchant) ?? { count: 0, total: 0 };
-      merchantStats.set(tx.merchant, {
-        count: current.count + 1,
-        total: current.total + Number(tx.amount),
-      });
-    }
-
-    return Array.from(merchantStats.entries())
-      .map(([merchant, stats]) => ({ merchant, ...stats }))
-      .filter((item) => item.count > 1)
-      .sort((left, right) => right.total - left.total)
-      .slice(0, 5);
-  }, [debitTransactions]);
-
   const categorySpendMap = useMemo(() => {
     return new Map((report?.by_category ?? []).map((item) => [item.category, item.total]));
   }, [report]);
@@ -333,20 +318,22 @@ function App() {
           </div>
           <div className="recurring-panel">
             <h4>Recurring spend watch</h4>
-            {recurringMerchants.length ? (
+            {recurringSpending?.recurring_merchants.length ? (
               <div className="recurring-list">
-                {recurringMerchants.map((item) => (
+                {recurringSpending.recurring_merchants.map((item) => (
                   <div key={item.merchant} className="recurring-item">
                     <div>
                       <strong>{item.merchant}</strong>
-                      <p>{item.count} debits this month</p>
+                      <p>
+                        {item.category} · {item.count} debits in the last {recurringSpending.lookback_months} months
+                      </p>
                     </div>
                     <span>INR {item.total.toFixed(2)}</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="muted">No merchant has repeated more than once in the current feed.</p>
+              <p className="muted">No recurring merchants found in the selected lookback window.</p>
             )}
           </div>
         </article>
