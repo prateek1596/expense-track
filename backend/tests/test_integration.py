@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
@@ -192,7 +192,7 @@ def test_list_transactions_with_data(client, auth_token, test_db):
         merchant="Swiggy",
         category="Food",
         description="Dinner",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
         raw_data={},
     )
     tx2 = Transaction(
@@ -203,7 +203,7 @@ def test_list_transactions_with_data(client, auth_token, test_db):
         merchant="Amazon",
         category="Shopping",
         description="Book",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
         raw_data={},
     )
     test_db.add_all([tx1, tx2])

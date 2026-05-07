@@ -1,7 +1,7 @@
 import hashlib
 import hmac
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
@@ -48,7 +48,7 @@ def client_with_overrides():
         bank_name="HDFC",
         masked_account="XXXX4321",
         aa_consent_id="consent-1",
-        linked_at=datetime.utcnow(),
+        linked_at=datetime.now(UTC),
     )
     db = FakeDB(account)
     previous_overrides = dict(app.dependency_overrides)

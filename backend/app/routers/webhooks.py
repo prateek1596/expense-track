@@ -1,6 +1,6 @@
 import hashlib
 import hmac
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -63,7 +63,7 @@ async def setu_webhook(request: Request, db: Session = Depends(get_db)):
             merchant=merchant,
             category=categorize_transaction(merchant, description),
             description=description,
-            timestamp=datetime.fromisoformat(timestamp) if timestamp else datetime.utcnow(),
+            timestamp=datetime.fromisoformat(timestamp) if timestamp else datetime.now(UTC),
             raw_data=item,
         )
         db.add(tx)
