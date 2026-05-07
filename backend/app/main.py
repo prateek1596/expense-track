@@ -12,7 +12,7 @@ app = FastAPI(
         "an Account Aggregator (AA) style flow. Includes auth, accounts, transactions, "
         "budgets, reports, webhooks and WebSocket-based realtime updates."
     ),
-    contact={"name": "Spend Dev Team", "email": "dev@localhost"},
+    contact={"name": "Spend Dev Team", "email": "dev@example.com"},
 )
 
 app.add_middleware(
