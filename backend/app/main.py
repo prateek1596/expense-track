@@ -4,7 +4,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routers import accounts, auth, budgets, reports, transactions, webhooks, ws
 
-app = FastAPI(title="Spend API", version="0.1.0")
+app = FastAPI(
+    title="Spend API",
+    version="0.1.0",
+    description=(
+        "Spend is a demo expense-tracking API focused on Indian bank integrations via "
+        "an Account Aggregator (AA) style flow. Includes auth, accounts, transactions, "
+        "budgets, reports, webhooks and WebSocket-based realtime updates."
+    ),
+    contact={"name": "Spend Dev Team", "email": "dev@localhost"},
+)
 
 app.add_middleware(
     CORSMiddleware,
