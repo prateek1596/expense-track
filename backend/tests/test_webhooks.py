@@ -98,7 +98,7 @@ def test_setu_webhook_creates_transactions_and_validates_signature(monkeypatch, 
     assert db.committed is True
     assert len(db.added) == 1
     assert db.added[0].user_id == 42
-    assert db.added[0].category == "Food"
+    assert db.added[0].category == "Food & Dining"
     budget_alerts.assert_awaited_once()
     broadcast.assert_awaited_once_with(42, {"type": "transaction.batch_created", "count": 1})
 

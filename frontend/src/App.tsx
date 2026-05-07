@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, API_BASE } from './api';
+import { ErrorBoundary } from './ErrorBoundary';
 import type { BankAccount, Budget, BudgetAlert, MonthlyReport, RecurringSpending, Transaction } from './types';
 
 function App() {
@@ -258,7 +259,8 @@ function App() {
   }, [token, month, year, txCategory, txSearch, selectedAccount]);
 
   return (
-    <div className="page">
+    <ErrorBoundary>
+      <div className="page">
       <header className="hero">
         <h1>Spend</h1>
         <p>Real-time monthly expense tracking for Indian bank users.</p>
@@ -518,6 +520,7 @@ function App() {
         </div>
       </section>
     </div>
+    </ErrorBoundary>
   );
 }
 
