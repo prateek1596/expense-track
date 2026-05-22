@@ -64,3 +64,19 @@ class Budget(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     user: Mapped[User] = relationship(back_populates="budgets")
+
+
+class ScheduledExport(Base):
+    __tablename__ = "scheduled_exports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    export_type: Mapped[str] = mapped_column(String(16), nullable=False)  # 'csv', 'pdf', or 'both'
+    day_of_month: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    hour: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    minute: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    active: Mapped[bool] = mapped_column(String(5), nullable=False, default="true")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    last_run_at: Mapped[datetime] = mapped_column(DateTime, default=None, nullable=True)
+
+    user: Mapped[User] = relationship(back_populates="scheduled_exports")
