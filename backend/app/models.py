@@ -18,6 +18,7 @@ class User(Base):
     accounts: Mapped[list["BankAccount"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     transactions: Mapped[list["Transaction"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     budgets: Mapped[list["Budget"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    scheduled_exports: Mapped[list["ScheduledExport"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class BankAccount(Base):
