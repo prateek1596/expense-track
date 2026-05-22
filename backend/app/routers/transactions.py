@@ -8,6 +8,7 @@ from app.database import get_db
 from app.deps import get_current_user
 from app.models import BankAccount, Transaction, User
 from app.schemas import TransactionCreate, TransactionResponse
+from app.schemas import PaginatedTransactions
 from app.services.budget_alerts import evaluate_and_notify_budget
 from app.services.categorizer import categorize_transaction
 from app.ws_manager import manager
@@ -44,6 +45,42 @@ def list_transactions(
         query = query.filter(Transaction.timestamp >= start, Transaction.timestamp < end)
 
     return query.order_by(Transaction.timestamp.desc()).limit(300).all()
+
+
+@router.get("/page", response_model=PaginatedTransactions)
+def list_transactions_page(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    month: int | None = Query(default=None, ge=1, le=12),
+    year: int | None = Query(default=None, ge=1),
+    category: str | None = Query(default=None),
+    search: str | None = Query(default=None),
+    account_id: int | None = Query(default=None, ge=1),
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=50, ge=1, le=1000),
+):
+    base_q = db.query(Transaction).filter(Transaction.user_id == current_user.id)
+
+    if account_id is not None:
+        base_q = base_q.filter(Transaction.account_id == account_id)
+
+    if category:
+        base_q = base_q.filter(Transaction.category == category)
+
+    if search:
+        pattern = f"%{search.strip()}%"
+        base_q = base_q.filter(or_(Transaction.merchant.ilike(pattern), Transaction.description.ilike(pattern)))
+
+    if month is not None and year is not None:
+        start = datetime(year, month, 1)
+        end = datetime(year + (month // 12), (month % 12) + 1, 1)
+        base_q = base_q.filter(Transaction.timestamp >= start, Transaction.timestamp < end)
+
+    total = base_q.count()
+    offset = (page - 1) * per_page
+    items = base_q.order_by(Transaction.timestamp.desc()).offset(offset).limit(per_page).all()
+
+    return PaginatedTransactions(items=items, total=total, page=page, per_page=per_page)
 
 
 @router.get("/csv")
