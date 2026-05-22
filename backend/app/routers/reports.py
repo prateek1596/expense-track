@@ -182,9 +182,9 @@ def monthly_report_csv(
     out.write("category,amount\r\n".encode("utf-8"))
     for item in report.by_category:
         # escape commas by quoting
-        cat = f'"{item.category.replace("\"", "\"\"")}"'
+        cat = '"' + (item.category or '').replace('"', '""') + '"'
         amt = f"{item.total:.2f}"
-        out.write(f"{cat},{amt}\r\n".encode("utf-8"))
+        out.write((cat + "," + amt + "\r\n").encode("utf-8"))
 
     out.seek(0)
     filename = f"monthly-report-{year}-{month:02d}.csv"
