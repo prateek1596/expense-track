@@ -12,3 +12,4 @@ redis==6.2.0
 alembic==1.14.1
 reportlab==4.2.5
 pytest==8.3.4
+apscheduler==3.10.1
