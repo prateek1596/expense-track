@@ -70,10 +70,11 @@ def recurring_spending(
     start = datetime(start_year, start_month, 1)
     end = datetime(year + (month // 12), (month % 12) + 1, 1)
 
+    # Normalize merchant and category to lower-case to better detect recurring merchants
     rows = (
         db.query(
-            Transaction.merchant,
-            Transaction.category,
+            func.lower(func.trim(Transaction.merchant)).label("merchant_norm"),
+            func.lower(func.trim(Transaction.category)).label("category_norm"),
             func.count(Transaction.id).label("count"),
             func.sum(Transaction.amount).label("total"),
             func.min(Transaction.timestamp).label("first_seen"),
@@ -85,24 +86,28 @@ def recurring_spending(
             Transaction.timestamp >= start,
             Transaction.timestamp < end,
         )
-        .group_by(Transaction.merchant, Transaction.category)
+        .group_by(func.lower(func.trim(Transaction.merchant)), func.lower(func.trim(Transaction.category)))
         .having(func.count(Transaction.id) > 1)
         .order_by(func.sum(Transaction.amount).desc())
         .all()
     )
 
-    recurring_merchants = [
-        RecurringMerchantItem(
-            merchant=row.merchant,
-            category=row.category,
-            count=int(row.count or 0),
-            total=float(row.total or 0),
-            average=float((row.total or 0) / row.count) if row.count else 0,
-            first_seen=row.first_seen,
-            last_seen=row.last_seen,
+    recurring_merchants = []
+    for row in rows:
+        # Use normalized values but present them in title-case for readability
+        merchant = (row.merchant_norm or '').title()
+        category = (row.category_norm or '').title()
+        recurring_merchants.append(
+            RecurringMerchantItem(
+                merchant=merchant,
+                category=category,
+                count=int(row.count or 0),
+                total=float(row.total or 0),
+                average=float((row.total or 0) / row.count) if row.count else 0,
+                first_seen=row.first_seen,
+                last_seen=row.last_seen,
+            )
         )
-        for row in rows
-    ]
 
     return RecurringSpendingResponse(
         month=month,
