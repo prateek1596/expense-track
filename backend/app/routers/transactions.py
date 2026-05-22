@@ -46,6 +46,68 @@ def list_transactions(
     return query.order_by(Transaction.timestamp.desc()).limit(300).all()
 
 
+@router.get("/csv")
+def transactions_csv(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    month: int | None = Query(default=None, ge=1, le=12),
+    year: int | None = Query(default=None, ge=1),
+    category: str | None = Query(default=None),
+    search: str | None = Query(default=None),
+    account_id: int | None = Query(default=None, ge=1),
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=1000, ge=1, le=5000),
+):
+    """Stream a CSV of transactions for the current user with the same filters as the list endpoint.
+
+    Pagination is supported via `page` and `per_page` (1-based pages).
+    """
+    base_q = db.query(Transaction).filter(Transaction.user_id == current_user.id)
+
+    if account_id is not None:
+        base_q = base_q.filter(Transaction.account_id == account_id)
+
+    if category:
+        base_q = base_q.filter(Transaction.category == category)
+
+    if search:
+        pattern = f"%{search.strip()}%"
+        base_q = base_q.filter(or_(Transaction.merchant.ilike(pattern), Transaction.description.ilike(pattern)))
+
+    if month is not None and year is not None:
+        start = datetime(year, month, 1)
+        end = datetime(year + (month // 12), (month % 12) + 1, 1)
+        base_q = base_q.filter(Transaction.timestamp >= start, Transaction.timestamp < end)
+
+    # Apply ordering and pagination
+    offset = (page - 1) * per_page
+    q = base_q.order_by(Transaction.timestamp.desc()).offset(offset).limit(per_page)
+
+    def _iter():
+        # header
+        yield 'id,timestamp,merchant,category,description,tx_type,amount,account_id\r\n'
+        for tx in q:
+            # safe CSV escaping
+            def esc(s: str) -> str:
+                if s is None:
+                    return '""'
+                return '"' + str(s).replace('"', '""') + '"'
+
+            row = [
+                str(tx.id),
+                esc(tx.timestamp.isoformat()),
+                esc(tx.merchant),
+                esc(tx.category),
+                esc(tx.description),
+                esc(tx.tx_type),
+                f"{tx.amount:.2f}",
+                str(tx.account_id),
+            ]
+            yield ",".join(row) + "\r\n"
+
+    return StreamingResponse(_iter(), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=transactions-{page}.csv"})
+
+
 @router.post("", response_model=TransactionResponse, status_code=status.HTTP_201_CREATED)
 async def create_transaction(payload: TransactionCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     account = (
