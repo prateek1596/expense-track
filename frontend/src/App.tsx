@@ -163,6 +163,26 @@ function App() {
     window.URL.revokeObjectURL(url);
   }
 
+  async function handleExportServerCsv() {
+    if (!token) return;
+    // export current filters, first page
+    const blob = await api.transactionsCsv(token, {
+      month,
+      year,
+      category: txCategory === 'All' ? undefined : txCategory,
+      search: txSearch || undefined,
+      account_id: selectedAccount ?? undefined,
+      page: 1,
+      per_page: 5000,
+    });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `transactions-${year}-${String(month).padStart(2, '0')}.csv`;
+    anchor.click();
+    window.URL.revokeObjectURL(url);
+  }
+
   async function handleSaveBudget() {
     if (!token) return;
     await api.upsertBudget(token, {
@@ -409,6 +429,9 @@ function App() {
             <p className="muted">Export the currently filtered feed as CSV for spreadsheets or sharing.</p>
             <button disabled={!token || !transactions.length} onClick={handleExportCsv}>
               Export CSV
+            </button>
+            <button disabled={!token || !transactions.length} onClick={handleExportServerCsv}>
+              Export CSV (server)
             </button>
           </div>
           <div className="feed">
