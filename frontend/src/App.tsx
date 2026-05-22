@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, API_BASE } from './api';
 import { ErrorBoundary } from './ErrorBoundary';
-import type { BankAccount, Budget, BudgetAlert, MonthlyReport, RecurringSpending, Transaction } from './types';
+import type { BankAccount, Budget, BudgetAlert, MonthlyReport, RecurringSpending, Transaction, PaginatedTransactions } from './types';
 
 function App() {
   const now = new Date();
@@ -11,6 +11,9 @@ function App() {
   const [token, setToken] = useState<string>('');
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [txPage, setTxPage] = useState<number>(1);
+  const [txPerPage, setTxPerPage] = useState<number>(50);
+  const [txTotal, setTxTotal] = useState<number>(0);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [alerts, setAlerts] = useState<BudgetAlert[]>([]);
   const [report, setReport] = useState<MonthlyReport | null>(null);
@@ -36,32 +39,57 @@ function App() {
     return `${base}/ws/0`;
   }, []);
 
-  async function refreshAll(activeToken: string) {
+  async function refreshAll(activeToken: string, page = 1) {
     const previousMonth = month === 1 ? 12 : month - 1;
     const previousYear = month === 1 ? year - 1 : year;
 
     const [accountRes, txRes, reportRes, previousReportRes, recurringRes, budgetRes] = await Promise.all([
       api.listAccounts(activeToken) as Promise<BankAccount[]>,
-      api.listTransactions(activeToken, {
+      api.listTransactionsPage(activeToken, {
         month,
         year,
         category: txCategory === 'All' ? undefined : txCategory,
         search: txSearch || undefined,
         account_id: selectedAccount ?? undefined,
-      }) as Promise<Transaction[]>,
+        page,
+        per_page: txPerPage,
+      }) as Promise<PaginatedTransactions>,
       api.monthlyReport(activeToken, month, year) as Promise<MonthlyReport>,
       api.monthlyReport(activeToken, previousMonth, previousYear) as Promise<MonthlyReport>,
       api.recurringSpending(activeToken, month, year, 6) as Promise<RecurringSpending>,
       api.listBudgets(activeToken) as Promise<Budget[]>,
     ]);
     setAccounts(accountRes);
-    setTransactions(txRes);
+    // txRes is paginated
+    setTransactions((txRes as unknown as PaginatedTransactions).items || []);
+    setTxTotal((txRes as unknown as PaginatedTransactions).total || 0);
+    setTxPage((txRes as unknown as PaginatedTransactions).page || page);
     setReport(reportRes);
     setPreviousReport(previousReportRes);
     setRecurringSpending(recurringRes);
     setBudgets(budgetRes);
     if (!selectedAccount && accountRes.length) {
       setSelectedAccount(accountRes[0].id);
+    }
+  }
+
+  async function fetchTxPage(page: number) {
+    if (!token) return;
+    try {
+      const res = (await api.listTransactionsPage(token, {
+        month,
+        year,
+        category: txCategory === 'All' ? undefined : txCategory,
+        search: txSearch || undefined,
+        account_id: selectedAccount ?? undefined,
+        page,
+        per_page: txPerPage,
+      })) as PaginatedTransactions;
+      setTransactions(res.items || []);
+      setTxTotal(res.total || 0);
+      setTxPage(res.page || page);
+    } catch (err) {
+      setError((err as Error).message);
     }
   }
 
@@ -286,7 +314,9 @@ function App() {
 
   useEffect(() => {
     if (!token) return;
-    refreshAll(token).catch((err) => setError((err as Error).message));
+    // reset to first page when filters change
+    setTxPage(1);
+    refreshAll(token, 1).catch((err) => setError((err as Error).message));
   }, [token, month, year, txCategory, txSearch, selectedAccount]);
 
   return (
