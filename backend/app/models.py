@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -76,7 +76,7 @@ class ScheduledExport(Base):
     day_of_month: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     hour: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     minute: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    active: Mapped[bool] = mapped_column(String(5), nullable=False, default="true")
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     last_run_at: Mapped[datetime] = mapped_column(DateTime, default=None, nullable=True)
 
