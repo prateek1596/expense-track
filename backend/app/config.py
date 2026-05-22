@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     setu_webhook_signature_header: str = "x-setu-signature"
 
     frontend_origin: str = "http://localhost:5173"
+    # Scheduler controls
+    enable_scheduler: bool = False
+    exports_folder: str = "./exports"
 
 
 settings = Settings()
