@@ -463,6 +463,27 @@ function App() {
             <button disabled={!token || !transactions.length} onClick={handleExportServerCsv}>
               Export CSV (server)
             </button>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: 12 }}>
+              <button
+                disabled={!token || txPage <= 1}
+                onClick={() => {
+                  const next = Math.max(1, txPage - 1);
+                  fetchTxPage(next);
+                }}
+              >
+                Prev
+              </button>
+              <span className="muted">Page {txPage} — {transactions.length} / {txTotal}</span>
+              <button
+                disabled={!token || txPage * txPerPage >= txTotal}
+                onClick={() => {
+                  const next = txPage + 1;
+                  fetchTxPage(next);
+                }}
+              >
+                Next
+              </button>
+            </div>
           </div>
           <div className="feed">
             {transactions.map((tx) => (
