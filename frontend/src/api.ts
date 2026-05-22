@@ -56,6 +56,24 @@ export const api = {
       headers: { Authorization: `Bearer ${token}` },
     });
   },
+  listTransactionsPage: (
+    token: string,
+    filters?: { month?: number; year?: number; category?: string; search?: string; account_id?: number; page?: number; per_page?: number },
+  ) => {
+    const params = new URLSearchParams();
+    if (filters?.month !== undefined) params.set('month', String(filters.month));
+    if (filters?.year !== undefined) params.set('year', String(filters.year));
+    if (filters?.category) params.set('category', filters.category);
+    if (filters?.search) params.set('search', filters.search);
+    if (filters?.account_id !== undefined) params.set('account_id', String(filters.account_id));
+    if (filters?.page !== undefined) params.set('page', String(filters.page));
+    if (filters?.per_page !== undefined) params.set('per_page', String(filters.per_page));
+
+    const query = params.toString();
+    return request(`/transactions/page${query ? `?${query}` : ''}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
   transactionsCsv: async (
     token: string,
     filters?: { month?: number; year?: number; category?: string; search?: string; account_id?: number; page?: number; per_page?: number },

@@ -23,6 +23,13 @@ export type Transaction = {
   timestamp: string;
 };
 
+export type PaginatedTransactions = {
+  items: Transaction[];
+  total: number;
+  page: number;
+  per_page: number;
+};
+
 export type MonthlyReport = {
   month: number;
   year: number;
