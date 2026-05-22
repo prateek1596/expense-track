@@ -2,7 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import accounts, auth, budgets, reports, transactions, webhooks, ws
+from app.routers import accounts, auth, budgets, reports, transactions, webhooks, ws, scheduled_exports
+from app.config import settings
+from app.services import scheduler as scheduler_service
 
 app = FastAPI(
     title="Spend API",
@@ -36,3 +38,14 @@ app.include_router(reports.router)
 app.include_router(budgets.router)
 app.include_router(webhooks.router)
 app.include_router(ws.router)
+app.include_router(scheduled_exports.router)
+
+
+@app.on_event("startup")
+def _startup():
+    if settings.enable_scheduler:
+        try:
+            scheduler_service.init_scheduler(app)
+        except Exception:
+            # make startup resilient in dev/test environments
+            pass
