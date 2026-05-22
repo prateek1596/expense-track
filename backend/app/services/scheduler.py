@@ -2,8 +2,6 @@ from datetime import datetime, timedelta
 import os
 from typing import Optional
 
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -11,7 +9,8 @@ from app.models import ScheduledExport, User
 from app.routers import reports as reports_router
 from app.database import SessionLocal
 
-scheduler: Optional[BackgroundScheduler] = None
+# Scheduler is created lazily inside init_scheduler so imports of this module do not require APScheduler to be installed
+scheduler = None
 
 
 def _ensure_exports_dir():
@@ -56,6 +55,14 @@ def init_scheduler(app=None):
     global scheduler
     if scheduler is not None:
         return scheduler
+
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from apscheduler.triggers.cron import CronTrigger
+    except Exception:
+        # APScheduler not available — skip initializing scheduler
+        return None
+
     scheduler = BackgroundScheduler()
 
     # load schedules from DB
@@ -74,6 +81,11 @@ def init_scheduler(app=None):
 
 def schedule_new(sched: ScheduledExport):
     global scheduler
+    try:
+        from apscheduler.triggers.cron import CronTrigger
+    except Exception:
+        return
+
     if scheduler is None:
         init_scheduler()
     trigger = CronTrigger(day=sched.day_of_month, hour=sched.hour, minute=sched.minute)
