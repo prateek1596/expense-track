@@ -70,6 +70,13 @@ class TransactionResponse(BaseModel):
     timestamp: datetime
 
 
+class PaginatedTransactions(BaseModel):
+    items: list[TransactionResponse]
+    total: int
+    page: int
+    per_page: int
+
+
 class MonthlyCategoryReportItem(BaseModel):
     category: str
     total: float
