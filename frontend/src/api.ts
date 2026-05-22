@@ -95,6 +95,16 @@ export const api = {
     }
     return response.blob();
   },
+  monthlyReportCsv: async (token: string, month: number, year: number) => {
+    const response = await fetch(`${API_BASE}/reports/monthly/csv?month=${month}&year=${year}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to export CSV');
+    }
+    return response.blob();
+  },
 
   listBudgets: (token: string) =>
     request('/budgets', { headers: { Authorization: `Bearer ${token}` } }),

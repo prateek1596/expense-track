@@ -164,3 +164,32 @@ def monthly_report_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+@router.get("/monthly/csv")
+def monthly_report_csv(
+    month: int,
+    year: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return a CSV export of the monthly category totals for the current user."""
+    report = monthly_report(month, year, current_user, db)
+
+    # Build CSV content
+    out = BytesIO()
+    # write header
+    out.write("category,amount\r\n".encode("utf-8"))
+    for item in report.by_category:
+        # escape commas by quoting
+        cat = f'"{item.category.replace("\"", "\"\"")}"'
+        amt = f"{item.total:.2f}"
+        out.write(f"{cat},{amt}\r\n".encode("utf-8"))
+
+    out.seek(0)
+    filename = f"monthly-report-{year}-{month:02d}.csv"
+    return StreamingResponse(
+        out,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )

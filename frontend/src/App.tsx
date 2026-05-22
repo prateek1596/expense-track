@@ -124,6 +124,17 @@ function App() {
     window.URL.revokeObjectURL(url);
   }
 
+  async function handleExportReportCsv() {
+    if (!token) return;
+    const blob = await api.monthlyReportCsv(token, month, year);
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `monthly-report-${year}-${String(month).padStart(2, '0')}.csv`;
+    anchor.click();
+    window.URL.revokeObjectURL(url);
+  }
+
   function handleExportCsv() {
     if (!transactions.length) return;
 
@@ -438,6 +449,7 @@ function App() {
             />
             <button disabled={!token} onClick={handleRefreshReport}>Refresh</button>
             <button disabled={!token} onClick={handleExportPdf}>Export PDF</button>
+            <button disabled={!token} onClick={handleExportReportCsv}>Export CSV</button>
           </div>
           <div className="comparison">
             <div className="comparison-item">
